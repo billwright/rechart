@@ -1,0 +1,2 @@
+module UsageChartHelper
+end

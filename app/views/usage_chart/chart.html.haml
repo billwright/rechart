@@ -1,0 +1,158 @@
+#chart-title{:style => "min-width: 400px; height: 40px; margin: 50 auto; text-align:center"}
+  %p
+    Energy Use for
+    %input#change_from_date{:name => "change[from_date]", :required => "required", :size => "30", :type => "text"}
+
+#container{:style => "min-width: 400px; height: 400px; margin: 0 auto"}
+
+
+:javascript
+
+   $(function () {
+     var chart;
+
+     $('#change_from_date').datepicker({ dateFormat: 'MM d, yy' });
+     $('#change_from_date').datepicker('setDate', '+0');
+
+     $( "#change_from_date" ).change(function() {
+
+       var date = $('#change_from_date').datepicker( "getDate" )
+       var sDate = $.datepicker.formatDate('yy-m-dd', date);
+       requestData(sDate);
+     });
+
+     function requestData(from_date) {
+
+       url = "fetchData.json";
+       if (from_date !== undefined) {
+        url = url + "?from_date=" +  from_date
+       }
+
+       $.getJSON(url,
+         function (data) {
+
+           while(chart.series.length > 0)
+             chart.series[0].remove(true);
+
+           $.each(data, function (key, d) {
+
+             var seriesObj;
+             seriesObj = seriesExists(d.series);
+             if (seriesObj.status == false) {
+               index = chart.series.length
+               chart.addSeries({
+                 name: '' + d.series + ' ' + index ,
+                 marker: {
+                   enabled: false
+                 },
+                 data: d.data,
+                 yAxis: index
+               });
+             } else {
+               chart.series[seriesObj.count].setData(d.data);
+             }
+
+           });
+
+         }
+       );
+     }
+
+     function seriesExists(name) {
+       var ct = 0;
+       var status = false;
+       var found_at = -1;
+       var len = chart.series.length;
+       if (len > 0) {
+         $.each(chart.series, function (count, curSeries) {
+           if (curSeries.name == name) {
+             found_at = count;
+             status = true;
+           }
+           ct = count;
+         });
+       }
+       return {
+         'count': found_at,
+         'status': status
+       };
+     }
+
+     $(document).ready(function () {
+
+       Highcharts.setOptions({
+         global: {
+           useUTC: false
+         }
+       });
+
+       chart = new Highcharts.Chart({
+
+         credits: {
+           enabled: false
+         },
+         chart: {
+           type: 'spline',
+           renderTo: 'container',
+           zoomType: 'xy',
+           spacingRight: 20,
+           events: {
+             load: function () {
+               chart = this;
+               setInterval(requestData, 15000000);
+             }
+           }
+         },
+         title: {
+           text: ''
+         },
+         subtitle: {
+           text: document.ontouchstart === undefined ?
+             '' : ''
+         },
+         xAxis: {
+           type: 'datetime',
+           labels: {
+             format: '{value:%Y-%m-%d}',
+             align: 'center'
+           }
+         },
+         yAxis: [
+           {
+             title: {
+               text: 'Watts'
+             },
+             showFirstLabel: false,
+             opposite: false
+           },
+           {
+             title: {
+               text: 'Temperature',
+               style: {
+                 color: Highcharts.getOptions().colors[1]
+               }
+             },
+             labels: {
+               format: '{value} mm',
+               style: {
+                 color: 'Highcharts.getOptions().colors[1]'
+               }
+             },
+             showFirstLabel: true,
+             opposite: true
+           }
+         ],
+
+         legend: {
+           enabled: true
+         },
+
+
+         series: []
+       });
+
+       requestData();
+
+     });
+
+   });
